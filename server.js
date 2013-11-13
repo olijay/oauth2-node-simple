@@ -23,7 +23,7 @@ function start(route, handle) {
     }
     
     http.createServer(onRequest).listen(8888);
-    console.log("Server has started.");
+    console.log("Server has started. Listening on port 8888");
 }
 
 exports.start = start;  

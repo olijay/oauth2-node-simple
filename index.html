@@ -7,9 +7,38 @@
     <script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.3.min.js"></script>
 </head>
 <body>
-   
+    <div>
+        Hello.<br/>
+        Welcome to the login page.<br/>
+        Enter your client ID: <input type="text" id="txtClientID"/>
+        <input type="button" value="Login" id="btnLogin"/>   
+    </div>
     <script type="text/javascript">
-    
+        $(function () {
+
+            $("#btnLogin").on('click', function(e){
+                var clientID = $("#txtClientID").val();
+                  
+                var jqxhr = $.post( "loginImplicit", { response_type: "token", client_id: clientID }, function(response) {
+                  // TODO process the grant success
+                })                     
+                  .fail(function() {
+                    // TODO process the grant error
+                  })
+                  .always(function() {
+                    
+                });//post loginImplicit
+                
+            });//btnLogin.on
+         
+
+        });
+
+       
+       
+       
+
+
     </script>
 </body>
 </html>
