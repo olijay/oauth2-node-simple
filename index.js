@@ -5,7 +5,9 @@ var requestHandlers = require("./requestHandlers");
 var handle = {}
 handle["/"] = requestHandlers.index;
 handle["/index"] = requestHandlers.index;
-handle["/loginImplicit"] = requestHandlers.loginImplicit;
-handle["/requestClientInformation"] = requestHandlers.requestClientInformation;
+handle["/authorizeImplicit"] = requestHandlers.authorizeImplicit;
+handle["/requestResource"] = requestHandlers.requestResource;
+handle["/registerToken"] = requestHandlers.registerToken;
 
-server.start(router.route, handle);
+
+server.start(router.route, handle, process.argv[2]);

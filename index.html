@@ -19,7 +19,7 @@
             $("#btnLogin").on('click', function(e){
                 var clientID = $("#txtClientID").val();
                   
-                var jqxhr = $.post( "loginImplicit", { response_type: "token", client_id: clientID }, function(response) {
+                var jqxhr = $.get( "authorizeImplicit", { response_type: "token", client_id: clientID, redirect_uri: "http://localhost:8889" }, function(response) {
                   // TODO process the grant success
                 })                     
                   .fail(function() {

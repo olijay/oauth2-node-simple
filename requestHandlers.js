@@ -23,15 +23,50 @@ function index(request, response) {
     });
 }
 
-function loginImplicit(request, response, postData) {
-    console.log("loginImplicit hit!");
-    var implicitData = querystring.parse(postData);
-}
+function authorizeImplicit(request, response, postData) {
+    console.log("authorizeImplicit hit!");
+    var authorizeImplicitRequest = querystring.parse(postData);
+    // verify that we have a valid request
+    if (authorizeImplicitRequest.response_type === "token" &&
+        authorizeImplicitRequest.client_id) {
 
-function requestClientInformation(request, response, postData) {
+        if (authorizeImplicitRequest.redirect_uri) {
+            if (authorizeImplicitRequest.redirect_uri != "http://localhost:8889") {
+                response.end(); // redirect_uri was incorrect
+            }
+        }
+        // what follows is the authorization logic (only two client_id's are valid)
+        if (authorizeImplicitRequest.client_id === "olafurj") {
+            // TODO generate a token
+            var access_token = "asdfjkl";
+        }
+        else if (authorizeImplicitRequest.client_id === "gertl") {
+            // TODO generate a token
+            var access_token = "qwerty";
+
+        }
+        // TODO register token with 8889
+
+        response.writeHead(302, { 'Content-Type': 'application/x-www-form-urlencoded', 
+                'Location' : 'http://localhost:8889/requestResource#access_token=' + access_token + 'token_type=bearer&expires_in=3600' });
+
+    }
+    else { // response_type and client_id were incorrect
+        
+    }
+    response.end()
     
 }
 
+function registerToken(request,response,postData) {
+    // TODO add token to array with a lifetime of 3600 seconds
+}
+
+function requestResource(request, response, postData) {
+    // TODO return the given clientID's full name
+}
+
 exports.index = index;
-exports.loginImplicit = loginImplicit;
-exports.requestClientInformation = requestClientInformation;
+exports.authorizeImplicit = authorizeImplicit;
+exports.requestResource = requestResource;
+exports.registerToken = registerToken;
