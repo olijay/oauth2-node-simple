@@ -27,7 +27,7 @@ function index(request, response) {
 }
 
 function authorizeImplicit(request, response) {
-    console.log("authorizeImplicit hit! request.url: " + request.url);
+    console.log("authorizeImplicit hit!");// request.url: " + request.url);
 
     //var authorizeImplicitRequest = querystring.parse(postData);
     
@@ -43,7 +43,8 @@ function authorizeImplicit(request, response) {
 
         if (authorizeImplicitRequest.redirect_uri) {
             if (authorizeImplicitRequest.redirect_uri != "http://localhost:8889") {
-                console.log("redirect_uri was incorrect");
+                console.log("401 redirect_uri was incorrect");
+                response.writeHead(401, "redirect_uri was incorrect");
                 response.end(); // redirect_uri was incorrect
             }
         }
@@ -57,6 +58,11 @@ function authorizeImplicit(request, response) {
             // TODO generate a token
             var access_token = "qwerty";
 
+        }
+        else {
+            console.log("no user with that username.");
+            response.writeHead(401, "no user with that username.");
+            response.end();
         }
 
         console.log("access_token is:" + access_token);
@@ -89,19 +95,33 @@ function authorizeImplicit(request, response) {
           });
 
         registerToken_request.on('response', function(res) {
-            console.log('status code: ' + res.statusCode);            
+            console.log('registerToken status code: ' + res.statusCode);       
+            if (res.statusCode == "200") { // success registering token
+                console.log("responding to authorizeImplicit");
+                // respond to the auth request
+                response.writeHead(302, { 
+                'Location' : 'http://localhost:8889/requestResource#access_token=' + access_token + '&token_type=bearer&expires_in=3600' });
+                response.end()  
+                console.log("authorizeImplicit response ended.");   
+            }
         });
 
           // register the token
+          console.log("registerToken writing data.");
           registerToken_request.write(post_data);
           registerToken_request.end();
+          console.log("registerToken request ended");
 
-          // respond to the auth request
-        response.writeHead(302, { 'Content-Type': 'application/x-www-form-urlencoded', 
-                'Location' : 'http://localhost:8889/requestResource?access_token=' + access_token + '&token_type=bearer&expires_in=3600' });
+          
+
     
     }    
-    response.end()
+    else {
+        console.log("wrong auth type or client_id not specified.");
+        response.writeHead(401, "wrong auth type or client_id not specified.");
+        response.end();
+    }
+    
     
 }
 // auth server running on 8888 calles this function on the resource server running on port 8889
@@ -112,7 +132,7 @@ function registerToken(request,response,postData) {
     console.log("token_data.access_token: " + token_data.access_token + " client_id: " +token_data.client_id);
     token_data.expires_on = new Date() + 3600*1000; // one hour from now in millisecs
     token_array.push(token_data);
-    response.writeHead(200, { 'Content-Type': 'text/plain' });
+    response.writeHead(200);
     response.end();
 
 }
@@ -124,20 +144,35 @@ function requestResource(request, response) {
     console.log("requestResource hit!");
     console.log("request.url: " + request.url);
 
+    var response_data = JSON.stringify({
+             'fullname' : 'Gert L Mikkelsen',
+             'client_id' : 'gertl'
+         });
+    console.log("requestResource response_data: " + response_data); 
+    
+    response.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length' :response_data.length});
+    response.write(response_data);
+    response.end();
 
+}
+
+function getStuff(request, response) {
+    console.log("getStuff hit!");
+    console.log("request.url: " + request.url);
 
     var response_data = JSON.stringify({
              'fullname' : 'Gert L Mikkelsen',
              'client_id' : 'gertl'
          });
-    console.log("requestResource response_data: " + response_data);
-    response.write(response_data);
+    console.log("requestResource response_data: " + response_data); 
+    
     response.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length' :response_data.length});
+    response.write(response_data);
     response.end();
-
 }
 
 exports.index = index;
 exports.authorizeImplicit = authorizeImplicit;
 exports.requestResource = requestResource;
 exports.registerToken = registerToken;
+exports.getStuff = getStuff;

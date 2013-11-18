@@ -8,6 +8,7 @@ handle["/index"] = requestHandlers.index;
 handle["/authorizeImplicit"] = requestHandlers.authorizeImplicit;
 handle["/requestResource"] = requestHandlers.requestResource;
 handle["/registerToken"] = requestHandlers.registerToken;
+handle["/getStuff"] = requestHandlers.getStuff;
 
 
 server.start(router.route, handle, process.argv[2]);

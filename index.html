@@ -12,9 +12,25 @@
         Welcome to the login page.<br/>
         Enter your client ID: <input type="text" id="txtClientID"/>
         <input type="button" value="Login" id="btnLogin"/>   
+        <input type="button" value="Get some other stuff" id="btnGetStuff"/>   
     </div>
     <script type="text/javascript">
         $(function () {
+
+            $("#btnGetStuff").on('click', function(e){
+                  var jqxhr = $.get( "getStuff", { response_type: "token", client_id: 'asdf', redirect_uri: "http://localhost:8889" }, function(response) {
+                  // TODO process the grant success
+                  alert("Something went right!")
+                })                     
+                  .fail(function(response) {
+                    // process the grant error
+                    alert("Something went horribly wrong!")
+                  })
+                  .always(function() {
+                    
+                });//post loginImplicit
+
+            });
 
             $("#btnLogin").on('click', function(e){
                 var clientID = $("#txtClientID").val();
@@ -23,7 +39,7 @@
                   // TODO process the grant success
                   alert("Something went right!")
                 })                     
-                  .fail(function(e) {
+                  .fail(function(response) {
                     // process the grant error
                     alert("Something went horribly wrong!")
                   })
