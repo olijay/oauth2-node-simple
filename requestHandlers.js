@@ -6,8 +6,9 @@ var http = require('http');
 var querystring = require('querystring');
 var token_array = [];
 var auth_codes = [];
+var token = "";
 
-function returnfile(request,response,filename) {
+function returnfile(response,filename) {
  fs.readFile(filename, function (err, data) {
         if (err) {
             response.writeHead(404, { 'Content-Type': 'text/plain' });
@@ -30,7 +31,7 @@ function returnfile(request,response,filename) {
 // client functions
 //
 function index(request, response) {
-    returnfile(request, response,"./index.html");
+    returnfile(response,"./index.html");
 }
 
 // return a redirect to 8889 login
@@ -56,13 +57,36 @@ function requestToken(request,response) {
         + "&secret=asdf", 
         function(res) {
             if (res.statusCode == "200") { // successfully got back a token
-                // TODO make the call to the resource server
+                token = res.getHeader("access_token");               
+               
+                returnfile(response,"./loggedin.html");
             }
   
-}).on('error', function(e) {
-  console.log("Got error: " + e.message);
-});
+    }).on('error', function(e) {
+      console.log("Got error: " + e.message);
+      response.writeHead(500, e.message);
+      response.end();
+    });
    
+}
+
+function getFullName(request,response) {
+    var getFullNameRequest = url.parse(request.url, true).query;
+    if (token && token != "") {// just making sure we have the token before calling requestResource
+          http.get("http://localhost:8889/requestResource?client_id=idp2013&username=" + getFullNameRequest.username + "&access_token=" + token, 
+        function(res) {
+           
+                response.writeHead(200);
+                response.write(res.);
+                response.end();
+            
+  
+    }).on('error', function(e) {
+      console.log("Got error: " + e.message);
+      response.writeHead(500, e.message);
+      response.end();
+    });
+    }
 }
 
 //
@@ -78,7 +102,7 @@ function openLogin(request, response) {
         loginRequest.redirect_uri == "http://localhost:8888/requestToken") { // the redirect_uri the user will be pointed to after auth
 
 
-      returnfile(request, response,"./login.html");
+      returnfile(response,"./login.html");
     }    
     else {
         var err = "wrong auth type OR wrong redirect_uri OR client_id not specified.";
@@ -131,15 +155,17 @@ function issueToken(request, response) {
             if (auth_codes[i].client_id == issueTokenRequest.client_id) {
                 var currentTimeVal = new Date();
                 // check for validity of authorization code
-                isCodeValid = (issueTokenRequest.code == auth_codes[i].code 
-                    && auth_codes[i].expires_on > currentTimeVal );                     
-                break;
+                if (issueTokenRequest.code == auth_codes[i].code 
+                    && auth_codes[i].expires_on > currentTimeVal ) {                   
+                    isCodeValid = true;
+                    break;
+                }
             }
                 
         }
         if (isCodeValid) {
             // respond with a token
-            // register token
+            // register token (auth server and resource server are the same, so they share state)
             var token = {};
              token.access_token = "2YotnFZFEjr1zCsicMWpAA";
              token.token_type = "bearer";
@@ -165,6 +191,7 @@ function issueToken(request, response) {
 
 
 
+
 // the client calles this on the resource server running on port 8889
 function requestResource(request, response) {
     // return the given clientID's full name
@@ -172,15 +199,42 @@ function requestResource(request, response) {
     console.log("requestResource hit!");
     console.log("request.url: " + request.url);
 
-    var response_data = JSON.stringify({
-             'fullname' : 'Gert L Mikkelsen',
-             'client_id' : 'gertl'
-         });
-    console.log("requestResource response_data: " + response_data); 
+    var fullNameRequest = url.parse(request.url, true).query;
+    // validate token
+    var isTokenValid = false;
+    for (var i = 0; i < token_array.length; i++) {
+        if (token_array[i].client_id == fullNameRequest.client_id) {
+
+            var currentTimeVal = new Date();
+            if (token_array[i].token == fullNameRequest.token 
+                && token_array[i].expires_on > currentTimeVal) {
+                // token is valid!
+                isTokenValid = true;
+                break;
+            }
+        }
+    };
+
+
+    if (isTokenValid) {
     
-    response.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length' :response_data.length});
-    response.write(response_data);
-    response.end();
+        if (fullNameRequest.username == "olafur") {
+            var response_data = JSON.stringify({
+                 'fullname' : 'Ólafur Jens Ólafsson'
+             });
+            console.log("requestResource response_data: " + response_data); 
+            
+            response.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length' :response_data.length});
+            response.write(response_data);
+            response.end();
+        }
+    }
+    else {
+        response.writeHead(401);
+        response.end();
+    }
+
+    
 
 }
 
@@ -189,6 +243,7 @@ function requestResource(request, response) {
 exports.index = index;
 exports.authRedirect = authRedirect;
 exports.requestToken = requestToken;
+exports.getFullName = getFullName;
 
 // auth server
 exports.openLogin = openLogin;

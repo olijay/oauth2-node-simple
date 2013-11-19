@@ -7,6 +7,7 @@ var handle = {}
 handle["/"] = requestHandlers.index;
 handle["/index"] = requestHandlers.index;
 handle["/authRedirect"] = requestHandlers.authRedirect;
+handle["/getFullName"] = requestHandlers.getFullName;
 
 // resource server
 handle["/requestResource"] = requestHandlers.requestResource;
