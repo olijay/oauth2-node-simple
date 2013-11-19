@@ -3,51 +3,35 @@
 <html lang="en" xmlns="http://www.w3.org/1999/xhtml">
 <head>
     <meta charset="utf-8" />
-    <title>This is the index page</title>
+    <title>This is the client page</title>
     <script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.3.min.js"></script>
 </head>
 <body>
     <div>
         Hello.<br/>
-        Welcome to the login page.<br/>
-        Enter your client ID: <input type="text" id="txtClientID"/>
-        <input type="button" value="Login" id="btnLogin"/>   
-        <input type="button" value="Get some other stuff" id="btnGetStuff"/>   
+        Welcome to the client.<br/>
+        <input type="button" value="Login here" id="btnAuthCodeLogin"/> 
+        <br/>
+        <div id="result"></div>
     </div>
     <script type="text/javascript">
         $(function () {
 
-            $("#btnGetStuff").on('click', function(e){
-                  var jqxhr = $.get( "getStuff", { response_type: "token", client_id: 'asdf', redirect_uri: "http://localhost:8889" }, function(response) {
-                  // TODO process the grant success
-                  alert("Something went right!")
-                })                     
-                  .fail(function(response) {
-                    // process the grant error
-                    alert("Something went horribly wrong!")
-                  })
-                  .always(function() {
+            $("#btnAuthCodeLogin").on('click', function(e){
+                  var jqxhr = $.get( "authRedirect", function(response) {
+                  // TODO should be redirected here
+                  //$("#result").text("Something went right!")
+                }).always(function(response) {
+                    //$("#result").text(response.getResponseHeader("URI"));
+                    if (/3\d\d/.test(response.status) && response.getResponseHeader("URI")) { // status code is in the 300-range
+                        window.location = response.getResponseHeader("URI");
+                    }
                     
-                });//post loginImplicit
+                }); 
 
             });
 
-            $("#btnLogin").on('click', function(e){
-                var clientID = $("#txtClientID").val();
-                  
-                var jqxhr = $.get( "authorizeImplicit", { response_type: "token", client_id: clientID, redirect_uri: "http://localhost:8889" }, function(response) {
-                  // TODO process the grant success
-                  alert("Something went right!")
-                })                     
-                  .fail(function(response) {
-                    // process the grant error
-                    alert("Something went horribly wrong!")
-                  })
-                  .always(function() {
-                    
-                });//post loginImplicit
-                
-            });//btnLogin.on
+          
          
 
         });

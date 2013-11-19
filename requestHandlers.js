@@ -5,9 +5,10 @@ var path = require("path");
 var http = require('http');
 var querystring = require('querystring');
 var token_array = [];
+var auth_codes = [];
 
-function index(request, response) {
-    fs.readFile("./index.html", function (err, data) {
+function returnfile(request,response,filename) {
+ fs.readFile(filename, function (err, data) {
         if (err) {
             response.writeHead(404, { 'Content-Type': 'text/plain' });
             response.write("404 File not found. Sorry.");
@@ -25,117 +26,144 @@ function index(request, response) {
         }
     });
 }
+//
+// client functions
+//
+function index(request, response) {
+    returnfile(request, response,"./index.html");
+}
 
-function authorizeImplicit(request, response) {
-    console.log("authorizeImplicit hit!");// request.url: " + request.url);
+// return a redirect to 8889 login
+function authRedirect(request,response) {
+ console.log("authorizeUsingCode hit!");    
 
-    //var authorizeImplicitRequest = querystring.parse(postData);
+              
+       
+        response.writeHead(302, { 
+        'URI' : 'http://localhost:8889/openLogin?response_type=code&client_id=idp2013&redirect_uri=http://localhost:8888/requestToken' });
+        response.end()  
+        console.log("authorizeUsingCode response ended.");  
     
+    
+}
 
-    var authorizeImplicitRequest = url.parse(request.url, true).query;
-    //console.log("authorizeImplicitRequest: " + authorizeImplicitRequest.response_type 
-    //    + " " + authorizeImplicitRequest.client_id 
-    //    + " " + authorizeImplicitRequest.redirect_uri);
+
+function requestToken(request,response) {
+    var tokenRequest = url.parse(request.url, true).query;
+    http.get("http://localhost:8889/issueToken?grant_type=authorization_code&code=" + tokenRequest.code 
+        + "&redirect_uri=" + tokenRequest.redirect_uri
+        + "&client_id=idp2013"
+        + "&secret=asdf", 
+        function(res) {
+            if (res.statusCode == "200") { // successfully got back a token
+                // TODO make the call to the resource server
+            }
+  
+}).on('error', function(e) {
+  console.log("Got error: " + e.message);
+});
+   
+}
+
+//
+// auth server functions
+//
+function openLogin(request, response) {
+    var loginRequest = url.parse(request.url, true).query;
+
     // verify that we have a valid request
     // skip all of this and end the response if response_type and client_id were incorrect
-    if (authorizeImplicitRequest.response_type == "token" &&
-        authorizeImplicitRequest.client_id) {
+    if (loginRequest.response_type == "code" &&
+        loginRequest.client_id == "idp2013" && // only one client allowed
+        loginRequest.redirect_uri == "http://localhost:8888/requestToken") { // the redirect_uri the user will be pointed to after auth
 
-        if (authorizeImplicitRequest.redirect_uri) {
-            if (authorizeImplicitRequest.redirect_uri != "http://localhost:8889") {
-                console.log("401 redirect_uri was incorrect");
-                response.writeHead(401, "redirect_uri was incorrect");
-                response.end(); // redirect_uri was incorrect
-            }
-        }
-        console.log("user is " + authorizeImplicitRequest.client_id);
-        // what follows is the authorization logic (only two client_id's are valid)
-        if (authorizeImplicitRequest.client_id === "olafurj") {
-            // TODO generate a token
-            var access_token = "asdfjkl";
-        }
-        else if (authorizeImplicitRequest.client_id === "gertl") {
-            // TODO generate a token
-            var access_token = "qwerty";
 
-        }
-        else {
-            console.log("no user with that username.");
-            response.writeHead(401, "no user with that username.");
-            response.end();
-        }
-
-        console.log("access_token is:" + access_token);
-        // register token with 8889
-         // Build the post string from an object
-         console.log("about to register token. client_id: " + authorizeImplicitRequest.client_id + " access_token: " + access_token);
-          var post_data = querystring.stringify({
-              'client_id' : authorizeImplicitRequest.client_id,
-              'access_token': access_token
-          });
-
-          // An object of options to indicate where to post to
-          var post_options = {
-              host: 'localhost',
-              port: '8889',
-              path: '/registerToken',
-              method: 'POST',
-              headers: {
-                  'Content-Type': 'application/x-www-form-urlencoded',
-                  'Content-Length': post_data.length
-              }
-          };
-
-          // Set up the request
-          var registerToken_request = http.request(post_options, function(res) {
-              res.setEncoding('utf8');
-              res.on('data', function (chunk) {
-                  console.log('Response: ' + chunk);
-              });
-          });
-
-        registerToken_request.on('response', function(res) {
-            console.log('registerToken status code: ' + res.statusCode);       
-            if (res.statusCode == "200") { // success registering token
-                console.log("responding to authorizeImplicit");
-                // respond to the auth request
-                response.writeHead(302, { 
-                'Location' : 'http://localhost:8889/requestResource#access_token=' + access_token + '&token_type=bearer&expires_in=3600' });
-                response.end()  
-                console.log("authorizeImplicit response ended.");   
-            }
-        });
-
-          // register the token
-          console.log("registerToken writing data.");
-          registerToken_request.write(post_data);
-          registerToken_request.end();
-          console.log("registerToken request ended");
-
-          
-
-    
+      returnfile(request, response,"./login.html");
     }    
     else {
-        console.log("wrong auth type or client_id not specified.");
-        response.writeHead(401, "wrong auth type or client_id not specified.");
+        var err = "wrong auth type OR wrong redirect_uri OR client_id not specified.";
+        console.log(err);
+        response.writeHead(401, err);
         response.end();
     }
-    
-    
 }
-// auth server running on 8888 calles this function on the resource server running on port 8889
-function registerToken(request,response,postData) {
-    // add token to array with a lifetime of an hour
-    var token_data = querystring.parse(postData);
-    console.log("registerToken hit!");
-    console.log("token_data.access_token: " + token_data.access_token + " client_id: " +token_data.client_id);
-    token_data.expires_on = new Date() + 3600*1000; // one hour from now in millisecs
-    token_array.push(token_data);
-    response.writeHead(200);
-    response.end();
+
+function authenticate(request,response) {
+     var authenticateRequest = url.parse(request.url, true).query;
+
+    if (authenticateRequest.username == "olafur" &&
+        authenticateRequest.password == "jens" && 
+        authenticateRequest.redirect_uri == "http://localhost:8888/requestToken" &&// the redirect_uri on the client the user will be pointed to after auth
+        authenticateRequest.client_id == "idp2013") { 
+
+        // user authenticated
+        // register code, bound to client and redirect_uri
+        var auth_code = {};
+        auth_code.code = 'qwerty';
+        auth_code.client_id = client_id;
+        auth_code.redirect_uri = redirect_uri
+        auth_code.expires_on = new Date() + 360*1000; // 10 minutes from now
+        auth_codes.push(auth_code);
+
+      response.writeHead(302, { 
+        'URI' : authenticateRequest.redirect_uri + '?code=qwerty&client_id=idp2013&redirect_uri=http://localhost:8888/requestToken' });
+        response.end()  
+        console.log("authenticate success.");  
+    }
+    else {
+         // user authenticated
+      response.writeHead(401, "Login unsuccessful");
+        response.end()  
+    }
+
 
 }
+
+function issueToken(request, response) {
+    var issueTokenRequest = url.parse(request.url, true).query;
+     if (issueTokenRequest.grant_type == "authorization_code" &&
+        issueTokenRequest.client_id == "idp2013" && // only one client allowed
+        issueTokenRequest.secret = "asdf" && // hardcoded secret
+        issueTokenRequest.redirect_uri == "http://localhost:8888/requestToken")  {
+        
+        var isCodeValid = false;
+        for (var i = 0; i < auth_codes.length; i++) {
+            if (auth_codes[i].client_id == issueTokenRequest.client_id) {
+                var currentTimeVal = new Date();
+                // check for validity of authorization code
+                isCodeValid = (issueTokenRequest.code == auth_codes[i].code 
+                    && auth_codes[i].expires_on > currentTimeVal );                     
+                break;
+            }
+                
+        }
+        if (isCodeValid) {
+            // respond with a token
+            // register token
+            var token = {};
+             token.access_token = "2YotnFZFEjr1zCsicMWpAA";
+             token.token_type = "bearer";
+             token.expires_on = new Date() + 3600*1000;
+             token_array.push(token);
+              response.writeHead(200, { 
+        'access_token' : token.access_token, 'token_type': token.token_type, 'expires_in': '3600'  });
+              response.end();
+       
+
+        } else {
+            response.writeHead(401, "Auth code invalid");
+            response.end() 
+        }
+
+    }
+
+}
+
+//
+// resource server functions
+//
+
+
 
 // the client calles this on the resource server running on port 8889
 function requestResource(request, response) {
@@ -156,23 +184,16 @@ function requestResource(request, response) {
 
 }
 
-function getStuff(request, response) {
-    console.log("getStuff hit!");
-    console.log("request.url: " + request.url);
 
-    var response_data = JSON.stringify({
-             'fullname' : 'Gert L Mikkelsen',
-             'client_id' : 'gertl'
-         });
-    console.log("requestResource response_data: " + response_data); 
-    
-    response.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length' :response_data.length});
-    response.write(response_data);
-    response.end();
-}
-
+// client
 exports.index = index;
-exports.authorizeImplicit = authorizeImplicit;
+exports.authRedirect = authRedirect;
+exports.requestToken = requestToken;
+
+// auth server
+exports.openLogin = openLogin;
+exports.authenticate = authenticate;
+exports.issueToken = issueToken;
+
+// resource server
 exports.requestResource = requestResource;
-exports.registerToken = registerToken;
-exports.getStuff = getStuff;
