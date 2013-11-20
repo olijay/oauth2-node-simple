@@ -8,6 +8,8 @@ handle["/"] = requestHandlers.index;
 handle["/index"] = requestHandlers.index;
 handle["/authRedirect"] = requestHandlers.authRedirect;
 handle["/getFullName"] = requestHandlers.getFullName;
+handle["/requestToken"] = requestHandlers.requestToken;
+
 
 // resource server
 handle["/requestResource"] = requestHandlers.requestResource;

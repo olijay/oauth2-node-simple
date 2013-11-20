@@ -5,24 +5,46 @@
     <meta charset="utf-8" />
     <title>This is the auth server's login page</title>
     <script type="text/javascript" src="http://ajax.aspnetcdn.com/ajax/jQuery/jquery-1.8.3.min.js"></script>
+    <script type="text/javascript">
+    (function($) {
+    $.QueryString = (function(a) {
+        if (a == "") return {};
+        var b = {};
+        for (var i = 0; i < a.length; ++i)
+        {
+            var p=a[i].split('=');
+            if (p.length != 2) continue;
+            b[p[0]] = decodeURIComponent(p[1].replace(/\+/g, " "));
+        }
+        return b;
+    })(window.location.search.substr(1).split('&'))
+})(jQuery);</script>
 </head>
 <body>
     <div>
         Hello.<br/>
         Welcome to the auth server's login page.<br/>
-        Username: <input type="text" id="txtUsername"/><br/>
-        Password: <input type="text" id="txtPassword"/><br/>
+        Username: <input type="text" id="txtUsername" value="olafur"/><br/>
+        Password: <input type="text" id="txtPassword" value="jens"/><br/>
         <input type="button" value="Login" id="btnLogin"/><br/>
         <div id="authResult"></div>
     </div>
     <script type="text/javascript">
         $(function () {
-
+          
             $("#btnLogin").on('click', function(e){
-                  var jqxhr = $.get( "authenticate", { username: $("#txtUsername").val(), password: $("#txtPassword"), redirect_uri: $.url().param("redirect_uri")}, function(response) {
+              var redirect_uri = encodeURIComponent($.QueryString["redirect_uri"]);
+              var client_id = encodeURIComponent($.QueryString["client_id"]);
+              var username = $("#txtUsername").val();
+              var password = $("#txtPassword").val();
+              var jqxhr = $.get('authenticate?username='
+                + username
+                +'&password=' + password
+                +'&client_id='+ client_id
+                + '&redirect_uri='+ redirect_uri, function(response) {
                  
                 })
-                  .always(function() {
+                  .always(function(response) {
                     // redirect to requestToken
                       if (/3\d\d/.test(response.status) && response.getResponseHeader("URI")) { // status code is in the 300-range
                         window.location = response.getResponseHeader("URI");

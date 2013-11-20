@@ -50,6 +50,7 @@ function authRedirect(request,response) {
 
 
 function requestToken(request,response) {
+    console.log("requesting token");
     var tokenRequest = url.parse(request.url, true).query;
     http.get("http://localhost:8889/issueToken?grant_type=authorization_code&code=" + tokenRequest.code 
         + "&redirect_uri=" + tokenRequest.redirect_uri
@@ -57,13 +58,13 @@ function requestToken(request,response) {
         + "&secret=asdf", 
         function(res) {
             if (res.statusCode == "200") { // successfully got back a token
-                token = res.getHeader("access_token");               
-               
+                token = res.headers.access_token;               
+               console.log("token obtained");
                 returnfile(response,"./loggedin.html");
             }
   
     }).on('error', function(e) {
-      console.log("Got error: " + e.message);
+      console.log("requestToken Got error: " + e.message);
       response.writeHead(500, e.message);
       response.end();
     });
@@ -71,20 +72,30 @@ function requestToken(request,response) {
 }
 
 function getFullName(request,response) {
+
     var getFullNameRequest = url.parse(request.url, true).query;
     if (token && token != "") {// just making sure we have the token before calling requestResource
-          http.get("http://localhost:8889/requestResource?client_id=idp2013&username=" + getFullNameRequest.username + "&access_token=" + token, 
+          http.get("http://localhost:8889/requestResource?client_id=idp2013&username=" + getFullNameRequest.username + "&token=" + token, 
         function(res) {
-           
-                response.writeHead(200);
-                response.write(res.);
-                response.end();
+                var fullname = "";
+                res.on('data', function(data) {
+                    fullname += data;
+                    
+                });
+
+                res.on('end', function() {
+                    console.log("getFullName response obtained, name is " + fullname);
+                     response.writeHead(200);
+                    response.write(fullname);                   
+                    response.end();
+                });
+                
+                
             
   
     }).on('error', function(e) {
-      console.log("Got error: " + e.message);
-      response.writeHead(500, e.message);
-      response.end();
+      console.log("getFullName Got error: " + e.message);
+     
     });
     }
 }
@@ -113,8 +124,12 @@ function openLogin(request, response) {
 }
 
 function authenticate(request,response) {
-     var authenticateRequest = url.parse(request.url, true).query;
 
+     var authenticateRequest = url.parse(request.url, true).query;
+    console.log("authenticate  user " + authenticateRequest.username 
+        + " pass " + authenticateRequest.password 
+        + " redirect_uri" + authenticateRequest.redirect_uri 
+        + " client_id " + authenticateRequest.client_id); 
     if (authenticateRequest.username == "olafur" &&
         authenticateRequest.password == "jens" && 
         authenticateRequest.redirect_uri == "http://localhost:8888/requestToken" &&// the redirect_uri on the client the user will be pointed to after auth
@@ -124,9 +139,9 @@ function authenticate(request,response) {
         // register code, bound to client and redirect_uri
         var auth_code = {};
         auth_code.code = 'qwerty';
-        auth_code.client_id = client_id;
-        auth_code.redirect_uri = redirect_uri
-        auth_code.expires_on = new Date() + 360*1000; // 10 minutes from now
+        auth_code.client_id = authenticateRequest.client_id;
+        auth_code.redirect_uri = authenticateRequest.redirect_uri
+        auth_code.expires_on = Date.now() + 360*1000; // 10 minutes from now
         auth_codes.push(auth_code);
 
       response.writeHead(302, { 
@@ -147,18 +162,25 @@ function issueToken(request, response) {
     var issueTokenRequest = url.parse(request.url, true).query;
      if (issueTokenRequest.grant_type == "authorization_code" &&
         issueTokenRequest.client_id == "idp2013" && // only one client allowed
-        issueTokenRequest.secret = "asdf" && // hardcoded secret
+        issueTokenRequest.secret == "asdf" && // hardcoded secret
         issueTokenRequest.redirect_uri == "http://localhost:8888/requestToken")  {
         
         var isCodeValid = false;
+        console.log("issueToken: auth_codes count " + auth_codes.length);
         for (var i = 0; i < auth_codes.length; i++) {
             if (auth_codes[i].client_id == issueTokenRequest.client_id) {
-                var currentTimeVal = new Date();
+                console.log("issueToken: client_id OK");
+                var currentTimeVal = Date.now();
                 // check for validity of authorization code
-                if (issueTokenRequest.code == auth_codes[i].code 
-                    && auth_codes[i].expires_on > currentTimeVal ) {                   
-                    isCodeValid = true;
-                    break;
+                if (issueTokenRequest.code == auth_codes[i].code) {
+                    console.log("issueToken: auth code OK"); 
+                    console.log("issueToken expires_on:" + auth_codes[i].expires_on);
+                    console.log("issueToken currentTimeVal:" + currentTimeVal);
+                    if (auth_codes[i].expires_on > currentTimeVal ) { 
+                        console.log("issueToken code is valid");
+                        isCodeValid = true;
+                        break;
+                    }
                 }
             }
                 
@@ -167,17 +189,20 @@ function issueToken(request, response) {
             // respond with a token
             // register token (auth server and resource server are the same, so they share state)
             var token = {};
+             token.client_id = issueTokenRequest.client_id;
              token.access_token = "2YotnFZFEjr1zCsicMWpAA";
              token.token_type = "bearer";
-             token.expires_on = new Date() + 3600*1000;
+             token.expires_on = Date.now() + 3600*1000;
              token_array.push(token);
               response.writeHead(200, { 
         'access_token' : token.access_token, 'token_type': token.token_type, 'expires_in': '3600'  });
               response.end();
+              console.log("token issued successfully.")
        
 
         } else {
-            response.writeHead(401, "Auth code invalid");
+            console.log("auth code invalid");
+            response.writeHead(500, "Auth code invalid");            
             response.end() 
         }
 
@@ -197,21 +222,36 @@ function requestResource(request, response) {
     // return the given clientID's full name
     //var request_data = querystring.parse(postData);
     console.log("requestResource hit!");
-    console.log("request.url: " + request.url);
+      console.log("requestResource: token_array length" + token_array.length);
 
     var fullNameRequest = url.parse(request.url, true).query;
+    console.log("requestResource: client_id param " + fullNameRequest.client_id);
+     console.log("requestResource: client_id token_array " + token_array[0].client_id);   
+    
+    console.log("requestResource: username param " + fullNameRequest.username);
+    console.log("requestResource: token param " + fullNameRequest.token);
+    console.log("requestResource: token token_array " + token_array[0].token);
+
     // validate token
     var isTokenValid = false;
+  
+
     for (var i = 0; i < token_array.length; i++) {
         if (token_array[i].client_id == fullNameRequest.client_id) {
+            console.log("requestResource: client_id OK");
+            
 
-            var currentTimeVal = new Date();
-            if (token_array[i].token == fullNameRequest.token 
-                && token_array[i].expires_on > currentTimeVal) {
-                // token is valid!
+            if (token_array[i].access_token == fullNameRequest.token) {
+                var currentTimeVal = Date.now();
+                 console.log("requestResource: auth code OK"); 
+                    console.log("requestResource expires_on:" + token_array[i].expires_on);
+                    console.log("requestResource currentTimeVal:" + currentTimeVal);
+                if (token_array[i].expires_on > currentTimeVal) {
+                console.log("requestResource token is valid!");
                 isTokenValid = true;
                 break;
             }
+        }
         }
     };
 
@@ -219,17 +259,16 @@ function requestResource(request, response) {
     if (isTokenValid) {
     
         if (fullNameRequest.username == "olafur") {
-            var response_data = JSON.stringify({
-                 'fullname' : 'Ólafur Jens Ólafsson'
-             });
-            console.log("requestResource response_data: " + response_data); 
+            var fullname =  'Ólafur Jens Ólafsson';
+            //console.log("requestResource response_data: " + response_data); 
             
-            response.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length' :response_data.length});
-            response.write(response_data);
+            response.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length' :fullname.length});
+            response.write(fullname);
             response.end();
         }
     }
     else {
+           console.log("requestResource token is INVALID");
         response.writeHead(401);
         response.end();
     }

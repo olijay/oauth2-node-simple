@@ -18,10 +18,22 @@
         $(function () {
 
             $("#btnRequestResource").on('click', function(e){
-                  var jqxhr = $.getJSON( "getFullName", function(data) {
-                  // TODO should be redirected here
-                  $("#result").text("Something went right! data:" + data.fullname)
+                $.ajax({
+
+                    type: "GET", 
+                    url: "getFullName?username=olafur",
+                    dataType: "text", 
+                    error: function() {
+                      $("#result").text("error :(");
+                    },
+                    success: function(data) { 
+                        $("#result").text("fullname:" + data);
+                    }
+
                 });
+
+
+                
 
             });
 
