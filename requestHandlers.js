@@ -54,8 +54,8 @@ function requestToken(request,response) {
     var tokenRequest = url.parse(request.url, true).query;
     http.get("http://localhost:8889/issueToken?grant_type=authorization_code&code=" + tokenRequest.code 
         + "&redirect_uri=" + tokenRequest.redirect_uri
-        + "&client_id=idp2013"
-        + "&secret=asdf", 
+        + "&client_id=idp2013" // the client maintains its own client_id, it is considered public information since the user agent will see it
+        + "&secret=asdf", //  this would normally be in a secure store
         function(res) {
             if (res.statusCode == "200") { // successfully got back a token
                 token = res.headers.access_token;               
@@ -98,6 +98,10 @@ function getFullName(request,response) {
      
     });
     }
+    else {
+        response.writeHead(500, "token has disappeared!");
+        response.end();
+    }
 }
 
 //
@@ -138,16 +142,17 @@ function authenticate(request,response) {
         // user authenticated
         // register code, bound to client and redirect_uri
         var auth_code = {};
-        auth_code.code = 'qwerty';
+        auth_code.code = 'qwerty'; // hardcoded auth code
         auth_code.client_id = authenticateRequest.client_id;
         auth_code.redirect_uri = authenticateRequest.redirect_uri
         auth_code.expires_on = Date.now() + 360*1000; // 10 minutes from now
         auth_codes.push(auth_code);
 
       response.writeHead(302, { 
-        'URI' : authenticateRequest.redirect_uri + '?code=qwerty&client_id=idp2013&redirect_uri=http://localhost:8888/requestToken' });
+        'URI' : authenticateRequest.redirect_uri + '?code=qwerty&client_id='+authenticateRequest.client_id+'&redirect_uri=' + authenticateRequest.redirect_uri });
         response.end()  
         console.log("authenticate success.");  
+        // hardcoded auth code
     }
     else {
          // user authenticated
@@ -161,8 +166,8 @@ function authenticate(request,response) {
 function issueToken(request, response) {
     var issueTokenRequest = url.parse(request.url, true).query;
      if (issueTokenRequest.grant_type == "authorization_code" &&
-        issueTokenRequest.client_id == "idp2013" && // only one client allowed
-        issueTokenRequest.secret == "asdf" && // hardcoded secret
+        issueTokenRequest.client_id == "idp2013" && // the auth server allows only one client
+        issueTokenRequest.secret == "asdf" && // hardcoded secret validation, this would normally be in a secure store
         issueTokenRequest.redirect_uri == "http://localhost:8888/requestToken")  {
         
         var isCodeValid = false;
@@ -190,11 +195,11 @@ function issueToken(request, response) {
             // register token (auth server and resource server are the same, so they share state)
             var token = {};
              token.client_id = issueTokenRequest.client_id;
-             token.access_token = "2YotnFZFEjr1zCsicMWpAA";
+             token.access_token = "2YotnFZFEjr1zCsicMWpAA"; // hardcoded token
              token.token_type = "bearer";
              token.expires_on = Date.now() + 3600*1000;
              token_array.push(token);
-              response.writeHead(200, { 
+              response.writeHead(200, { // TODO this probably shouldn't be in a header
         'access_token' : token.access_token, 'token_type': token.token_type, 'expires_in': '3600'  });
               response.end();
               console.log("token issued successfully.")
