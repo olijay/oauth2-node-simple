@@ -3,6 +3,8 @@ oauth2-node-simple
 The application's source code is hosted here
 https://github.com/olijay/oauth2-node-simple
 ==================
+The application is built using node.js, this can be obtained from http://nodejs.org for many different platforms
+==================
 The application requires two instances of node running at once. To run the two instances, enter the following command lines
 node index.js 8888
 node index.js 8889
