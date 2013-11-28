@@ -20,5 +20,8 @@ handle["/authenticate"] = requestHandlers.authenticate;
 handle["/openLogin"] = requestHandlers.openLogin;
 
 
-
-server.start(router.route, handle, process.argv[2]);
+var port = 8888;
+if (process.argv[2]) {
+    port = process.argv[2];
+    }
+server.start(router.route, handle, port);
